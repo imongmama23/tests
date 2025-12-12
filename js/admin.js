@@ -159,19 +159,19 @@ function extractPreferredCut(notes) {
 }
 
 /**
- * Generate correct price breakdown HTML for admin view
- * 
- * Rules:
- * - Subtotal = package + all add-ons
- * - Total Price = subtotal (booking fee does NOT change this)
- * - Booking Fee is shown separately
- * - Amount to Pay on Visit = Total Price - Booking Fee (only shown after confirmation)
+ * Generate price breakdown HTML for admin view
+ * Uses unified system: Total Amount = Subtotal - Booking Fee (MINUS!)
  * 
  * @param {Object} booking - Booking object
  * @param {Object} pkg - Package object (optional)
  * @returns {string} HTML for price breakdown
  */
 function generatePriceBreakdown(booking, pkg = null) {
+  // Use unified price breakdown from main.js
+  if (typeof generateUnifiedPriceBreakdown === 'function') {
+    return generateUnifiedPriceBreakdown(booking);
+  }
+  
   if (!booking) return '';
 
   // Get package price
@@ -187,11 +187,8 @@ function generatePriceBreakdown(booking, pkg = null) {
   // Get booking fee
   const bookingFee = booking.cost?.bookingFee || 0;
   
-  // Total Price = Subtotal (booking fee does NOT change this)
-  const totalPrice = subtotal;
-  
-  // Amount to Pay on Visit = Total Price - Booking Fee
-  const amountToPayOnVisit = Math.max(0, totalPrice - bookingFee);
+  // Total Amount = Subtotal - Booking Fee (MINUS, not plus!)
+  const totalAmount = Math.max(0, subtotal - bookingFee);
   
   // Build add-ons list HTML
   let addOnsListHtml = '';
@@ -223,28 +220,22 @@ function generatePriceBreakdown(booking, pkg = null) {
         </div>
       ` : ''}
       
+      <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 2px solid var(--gray-400); font-weight: 600;">
+        <span>Subtotal</span>
+        <span>${formatCurrency(subtotal)}</span>
+      </div>
+      
       ${bookingFee > 0 ? `
-        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 2px solid var(--gray-400); font-weight: 600;">
-          <span>Subtotal</span>
-          <span>${formatCurrency(subtotal)}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-300); color: var(--primary);">
+        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-300); color: var(--danger, #dc3545);">
           <span style="font-weight: 500;">Booking Fee (Paid)</span>
           <span style="font-weight: 600;">- ${formatCurrency(bookingFee)}</span>
         </div>
-      ` : `
-        <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 2px solid var(--gray-400); font-weight: 600;">
-          <span>Total</span>
-          <span>${formatCurrency(subtotal)}</span>
-        </div>
-      `}
-      
-      ${booking.status !== 'pending' && bookingFee > 0 ? `
-        <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; margin: 0.5rem -1rem -1rem -1rem; background: #e8f5e9; border-radius: 0 0 var(--radius-sm) var(--radius-sm);">
-          <span style="font-weight: 600; color: #2e7d32;">Amount to Pay on Visit</span>
-          <span style="font-weight: 700; color: #2e7d32; font-size: 1.1rem;">${formatCurrency(amountToPayOnVisit)}</span>
-        </div>
       ` : ''}
+      
+      <div style="display: flex; justify-content: space-between; padding: 0.75rem 1rem; margin: 0.5rem -1rem -1rem -1rem; background: #e8f5e9; border-radius: 0 0 var(--radius-sm) var(--radius-sm);">
+        <span style="font-weight: 700; color: #2e7d32; font-size: 1.05rem;">Total Amount</span>
+        <span style="font-weight: 700; color: #2e7d32; font-size: 1.1rem;">${formatCurrency(totalAmount)}</span>
+      </div>
     </div>
   `;
   
@@ -6011,10 +6002,9 @@ async function openPricingBreakdownModal(bookingId) {
   const addOnsTotal = addOnsArray.reduce((sum, addon) => sum + (addon.price || 0), 0);
   const servicesTotal = cost.services?.reduce((sum, service) => sum + (service.price || 0), 0) || 0;
   
-  // Calculate correct total: package + services + add-ons + booking fee
+  // Calculate correct total: Total Amount = Subtotal - Booking Fee (MINUS, not plus!)
   const subtotal = packagePrice + servicesTotal + addOnsTotal;
-  const totalAmount = subtotal + bookingFee;
-  const balanceOnVisit = subtotal; // Balance is just the service cost
+  const totalAmount = Math.max(0, subtotal - bookingFee);
 
   const modalContent = `
     <div style="max-width: 500px;">
@@ -6069,9 +6059,9 @@ async function openPricingBreakdownModal(bookingId) {
           <span style="font-weight: 700; color: var(--gray-900); font-size: 1.1rem;">${formatCurrency(subtotal)}</span>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1rem; background: #e8f5e9; padding: 0.75rem; border-radius: 0.25rem;">
-          <span style="color: #2e7d32; font-weight: 500;">🎫 Booking Fee:</span>
-          <span style="font-weight: 600; color: #2e7d32;">+${formatCurrency(bookingFee)}</span>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1rem; background: #fff3cd; padding: 0.75rem; border-radius: 0.25rem;">
+          <span style="color: var(--danger, #dc3545); font-weight: 500;">🎫 Booking Fee (Paid):</span>
+          <span style="font-weight: 600; color: var(--danger, #dc3545);">- ${formatCurrency(bookingFee)}</span>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; background: #e8f5e9; padding: 1rem; border-radius: 0.25rem; border-left: 4px solid #2e7d32;">
