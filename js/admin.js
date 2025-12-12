@@ -207,7 +207,7 @@ function generatePriceBreakdown(booking, pkg = null) {
       
       <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-300);">
         <span style="font-weight: 500;">Package</span>
-        <span style="font-weight: 600;">${formatCurrency(packagePrice)}</span>
+        <span style="font-weight: 600;">${formatCurrency(totalAmount)}</span>
       </div>
       
       ${addOns.length > 0 ? `
@@ -1116,15 +1116,18 @@ function renderConfirmedBookingsTable(bookings) {
                   <button class="btn btn-primary btn-sm" onclick="toggleActionDropdown(this)">
                     Actions ▼
                   </button>
-                  <div class="action-dropdown-menu" style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); box-shadow: var(--shadow); z-index: 10; min-width: 150px;">
+                  <div class="action-dropdown-menu" style="position: absolute; top: 100%; right: 0; background: white; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); box-shadow: var(--shadow); z-index: 10; min-width: 180px;">
+                    <button class="action-dropdown-item" onclick="openBookingDetail('${booking.id}'); closeActionDropdown(this)">
+                      👁️ View Details
+                    </button>
                     <button class="action-dropdown-item" onclick="handleStartService('${booking.id}'); closeActionDropdown(this)">
                       ▶️ Start Service
                     </button>
+                    <button class="action-dropdown-item" onclick="openRescheduleModal('${booking.id}'); closeActionDropdown(this)">
+                      📅 Reschedule
+                    </button>
                     <button class="action-dropdown-item" onclick="openCancelModal('${booking.id}'); closeActionDropdown(this)">
                       ❌ Cancel
-                    </button>
-                    <button class="action-dropdown-item" onclick="modalSystem.close(); closeActionDropdown(this)">
-                      ✕ Close
                     </button>
                   </div>
                 </div>
@@ -3090,8 +3093,8 @@ async function confirmBooking(bookingId) {
     return;
   }
 
-  // Update status to In Progress (not just confirmed)
-  booking.status = 'In Progress';
+  // Update status to confirmed (move from pending to confirmed)
+  booking.status = 'confirmed';
   booking.confirmedAt = Date.now();
   
   // Ensure cost object exists and has correct structure
@@ -6163,6 +6166,10 @@ async function openRevenueDetailsModal() {
           <div style="color: #6a1b9a; font-size: 0.9rem; font-weight: 600;">Services</div>
           <div style="color: #6a1b9a; font-size: 1.8rem; font-weight: 700; margin-top: 0.5rem;">${formatCurrency(totalServices)}</div>
         </div>
+        <div style="background: #fff3cd; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #dc3545;">
+          <div style="color: #dc3545; font-size: 0.9rem; font-weight: 600;">Booking Fees (Paid)</div>
+          <div style="color: #dc3545; font-size: 1.8rem; font-weight: 700; margin-top: 0.5rem;">${formatCurrency(totalBookingFees)}</div>
+        </div>
       </div>
 
       <!-- Detailed Table -->
@@ -6178,11 +6185,15 @@ async function openRevenueDetailsModal() {
                 <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Package</th>
                 <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Add-ons</th>
                 <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Services</th>
+                <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Subtotal</th>
+                <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Booking Fee</th>
                 <th style="padding: 0.75rem; text-align: right; font-weight: 600;">Total</th>
               </tr>
             </thead>
             <tbody>
-              ${bookingDetails.map(b => `
+              ${bookingDetails.map(b => {
+                const subtotal = b.packagePrice + b.addOnsTotal + b.servicesTotal;
+                return `
                 <tr style="border-bottom: 1px solid var(--gray-200);">
                   <td style="padding: 0.75rem; font-weight: 600; color: #2e7d32;">${escapeHtml(b.id)}</td>
                   <td style="padding: 0.75rem;">${escapeHtml(b.customer)}</td>
@@ -6190,9 +6201,12 @@ async function openRevenueDetailsModal() {
                   <td style="padding: 0.75rem; text-align: right;">${formatCurrency(b.packagePrice)}</td>
                   <td style="padding: 0.75rem; text-align: right; color: #f57c00; font-weight: 600;">${formatCurrency(b.addOnsTotal)}</td>
                   <td style="padding: 0.75rem; text-align: right;">${formatCurrency(b.servicesTotal)}</td>
+                  <td style="padding: 0.75rem; text-align: right; font-weight: 600;">${formatCurrency(subtotal)}</td>
+                  <td style="padding: 0.75rem; text-align: right; color: #dc3545; font-weight: 600;">- ${formatCurrency(b.bookingFee)}</td>
                   <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: #2e7d32;">${formatCurrency(b.totalPrice)}</td>
                 </tr>
-              `).join('')}
+              `;
+              }).join('')}
             </tbody>
           </table>
         </div>
