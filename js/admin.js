@@ -171,35 +171,35 @@ function generatePriceBreakdown(booking, pkg = null) {
   if (typeof generateUnifiedPriceBreakdown === 'function') {
     return generateUnifiedPriceBreakdown(booking);
   }
-  
+
   if (!booking) return '';
 
   // Get package price
   const packagePrice = booking.cost?.packagePrice || pkg?.price || 0;
-  
+
   // Calculate add-ons total
   const addOns = booking.addOns || [];
   const addOnsTotal = addOns.reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
-  
+
   // Calculate subtotal
   const subtotal = packagePrice + addOnsTotal;
-  
+
   // Get booking fee
   const bookingFee = booking.cost?.bookingFee || 0;
-  
+
   // Total Amount = Subtotal - Booking Fee (MINUS, not plus!)
   const totalAmount = Math.max(0, subtotal - bookingFee);
-  
+
   // Build add-ons list HTML
   let addOnsListHtml = '';
   if (addOns.length > 0) {
-    addOnsListHtml = addOns.map(addon => 
+    addOnsListHtml = addOns.map(addon =>
       `<div style="padding-left: 1.5rem; color: var(--gray-600); font-size: 0.9rem;">
         • ${escapeHtml(addon.name)} - ${formatCurrency(addon.price)}
       </div>`
     ).join('');
   }
-  
+
   // Generate breakdown HTML
   let html = `
     <div class="price-breakdown" style="background: var(--gray-50); padding: 1rem; border-radius: var(--radius-sm); margin: 1rem 0; border: 1px solid var(--gray-200);">
@@ -207,7 +207,7 @@ function generatePriceBreakdown(booking, pkg = null) {
       
       <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--gray-300);">
         <span style="font-weight: 500;">Package</span>
-        <span style="font-weight: 600;">${formatCurrency(totalAmount)}</span>
+        <span style="font-weight: 600;">${formatCurrency(packagePrice)}</span>
       </div>
       
       ${addOns.length > 0 ? `
@@ -238,7 +238,7 @@ function generatePriceBreakdown(booking, pkg = null) {
       </div>
     </div>
   `;
-  
+
   return html;
 }
 
@@ -1504,7 +1504,7 @@ async function openBookingDetail(bookingId) {
   const packagePrice = booking.cost?.packagePrice || 0;
   const addOnsTotal = (booking.addOns || []).reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
   const currentTotal = packagePrice + addOnsTotal;
-  
+
   // Calculate remaining balance after booking fee
   const bookingFee = booking.cost?.bookingFee || 0;
   const remainingBalance = Math.max(0, currentTotal - bookingFee);
@@ -1586,7 +1586,7 @@ async function openBookingDetail(bookingId) {
                 <button class="btn btn-primary btn-sm" onclick="handleAddonToBooking('${bookingId}')">Add</button>
             </div>
             ${currentAddonsList}
-            <p style="text-align: right; font-weight: 600; margin-top: 0.5rem; margin-bottom: 0;">Current Total: ${formatCurrency(currentTotal)}</p>
+            <p style="text-align: right; font-weight: 600; margin-top: 0.5rem; margin-bottom: 0;">Current Total: ${formatCurrency(remainingBalance)}</p>
         </div>
     `;
   }
@@ -2551,22 +2551,22 @@ async function renderBookingHistory() {
       const details = (h.message || h.note || '').toLowerCase();
       const customerName = (booking?.customerName || '').toLowerCase();
       const petName = (booking?.petName || '').toLowerCase();
-      
+
       return displayCode.toLowerCase().includes(searchTerm) ||
-             action.includes(searchTerm) ||
-             details.includes(searchTerm) ||
-             customerName.includes(searchTerm) ||
-             petName.includes(searchTerm);
+        action.includes(searchTerm) ||
+        details.includes(searchTerm) ||
+        customerName.includes(searchTerm) ||
+        petName.includes(searchTerm);
     });
   }
 
   // Apply sort based on sortBy field and sortOrder
   const sortBy = adminHistoryState.sortBy || 'date';
   const sortOrder = adminHistoryState.sortOrder || 'desc';
-  
+
   history.sort((a, b) => {
     let aValue, bValue;
-    
+
     switch (sortBy) {
       case 'date':
         aValue = a.timestamp;
@@ -2594,12 +2594,12 @@ async function renderBookingHistory() {
         aValue = a.timestamp;
         bValue = b.timestamp;
     }
-    
+
     // Handle string comparisons
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
     }
-    
+
     // Handle numeric comparisons
     if (sortOrder === 'asc') {
       return aValue - bValue;
@@ -2733,7 +2733,7 @@ function changeHistoryPage(newPage) {
 function filterAdminHistory() {
   const searchInput = document.getElementById('historySearch');
   const sortOrder = document.getElementById('historySortOrder');
-  
+
   if (searchInput && sortOrder) {
     adminHistoryState.searchTerm = searchInput.value.toLowerCase();
     adminHistoryState.sortOrder = sortOrder.value;
@@ -2763,17 +2763,17 @@ function getBookingForHistory(bookingId, bookings = []) {
   // Try exact ID match first
   let booking = bookings.find(b => b.id === bookingId);
   if (booking) return booking;
-  
+
   // Try shortId match
   booking = bookings.find(b => b.shortId === bookingId);
   if (booking) return booking;
-  
+
   // Try matching the display code
   booking = bookings.find(b => {
     const displayCode = typeof getBookingDisplayCode === 'function' ? getBookingDisplayCode(b) : (b.shortId || b.id);
     return displayCode === bookingId;
   });
-  
+
   return booking || null;
 }
 
@@ -2814,14 +2814,14 @@ function formatHistoryDetails(entry, bookings = []) {
 function formatHistoryAmount(bookingId, bookings = []) {
   const booking = getBookingForHistory(bookingId, bookings);
   if (!booking) return '—';
-  
+
   // Try multiple ways to get the total price
   const totalPrice = booking.totalPrice || booking.cost?.subtotal || booking.cost?.totalAmount || 0;
-  
+
   if (totalPrice > 0) {
     return `<button class="btn btn-sm" style="background: #2e7d32; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.25rem; cursor: pointer; font-weight: 600;" onclick="openPricingBreakdownModal('${booking.id}')">${formatCurrency(totalPrice)}</button>`;
   }
-  
+
   // Fallback: calculate from cost object
   const cost = booking.cost;
   if (cost) {
@@ -2832,7 +2832,7 @@ function formatHistoryAmount(bookingId, bookings = []) {
       return `<button class="btn btn-sm" style="background: #2e7d32; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.25rem; cursor: pointer; font-weight: 600;" onclick="openPricingBreakdownModal('${booking.id}')">${formatCurrency(total)}</button>`;
     }
   }
-  
+
   return '—';
 }
 
@@ -2880,14 +2880,14 @@ function showModal(content) {
     console.error('ModalSystem not loaded');
     return;
   }
-  
+
   // Store the content for reference
   window._currentModalContent = content;
-  
+
   // Create a container element for the HTML content
   const contentElement = document.createElement('div');
   contentElement.innerHTML = content;
-  
+
   // Show modal with the HTML content
   modalSystem.show({
     content: contentElement,
@@ -2904,30 +2904,30 @@ function showModal(content) {
 async function openAddBookingFeeModal(bookingId) {
   const bookings = await getBookings();
   const booking = bookings.find(b => b.id === bookingId);
-  
+
   if (!booking) {
     alert('❌ Booking not found');
     return;
   }
-  
+
   // Check if booking is pending
   if (booking.status !== 'pending') {
     alert('❌ Can only add booking fee to pending bookings');
     return;
   }
-  
-  const bookingCode = typeof getBookingDisplayCode === 'function' 
-    ? getBookingDisplayCode(booking) 
+
+  const bookingCode = typeof getBookingDisplayCode === 'function'
+    ? getBookingDisplayCode(booking)
     : (booking.shortId || booking.id);
-  
+
   // Calculate subtotal
   const packagePrice = booking.cost?.packagePrice || booking.totalPrice || 0;
   const addOnsTotal = (booking.addOns || []).reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
   const subtotal = packagePrice + addOnsTotal;
-  
+
   // Get current booking fee
   const currentFee = booking.cost?.bookingFee || 0;
-  
+
   const modalContent = `
     <div style="max-width: 500px;">
       <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: var(--gray-900);">Add Booking Fee</h3>
@@ -2978,24 +2978,24 @@ async function openAddBookingFeeModal(bookingId) {
       </div>
     </div>
   `;
-  
+
   showModal(modalContent);
-  
+
   // Add input validation
   setTimeout(() => {
     const input = document.getElementById('bookingFeeAmount');
     const warning = document.getElementById('bookingFeeWarning');
     const warningText = document.getElementById('bookingFeeWarningText');
-    
+
     if (input && warning && warningText) {
-      input.addEventListener('input', function() {
+      input.addEventListener('input', function () {
         const amount = parseFloat(this.value);
-        
+
         if (isNaN(amount) || amount <= 0) {
           warning.style.display = 'none';
           return;
         }
-        
+
         if (amount > subtotal) {
           warning.style.display = 'block';
           warningText.textContent = `Booking fee (₱${amount.toFixed(2)}) exceeds subtotal (₱${subtotal.toFixed(2)}). Amount to pay on visit will be ₱0.`;
@@ -3003,7 +3003,7 @@ async function openAddBookingFeeModal(bookingId) {
           warning.style.display = 'none';
         }
       });
-      
+
       // Focus the input
       input.focus();
     }
@@ -3016,47 +3016,47 @@ async function openAddBookingFeeModal(bookingId) {
  */
 async function saveBookingFee(bookingId, subtotal) {
   const input = document.getElementById('bookingFeeAmount');
-  
+
   if (!input) {
     alert('❌ Error: Input field not found');
     return;
   }
-  
+
   const amount = parseFloat(input.value);
-  
+
   // Validate amount
   if (isNaN(amount) || amount <= 0) {
     alert('❌ Please enter a valid booking fee amount greater than 0');
     input.focus();
     return;
   }
-  
+
   // Get bookings
   const bookings = await getBookings();
   const booking = bookings.find(b => b.id === bookingId);
-  
+
   if (!booking) {
     alert('❌ Booking not found');
     modalSystem.close();
     return;
   }
-  
+
   // Ensure cost object exists
   if (!booking.cost) {
     booking.cost = {};
   }
-  
+
   // Save booking fee
   booking.cost.bookingFee = Math.round(amount * 100) / 100;
   booking.bookingFeeAddedAt = new Date().toISOString();
   booking.bookingFeeAddedBy = 'admin'; // TODO: Get actual admin ID
-  
+
   // Calculate amount to pay on arrival (but don't change total)
   booking.cost.amountToPayOnArrival = Math.max(0, subtotal - booking.cost.bookingFee);
-  
+
   // Save to database
   saveBookings(bookings);
-  
+
   // Log history
   logBookingHistory({
     bookingId,
@@ -3064,13 +3064,13 @@ async function saveBookingFee(bookingId, subtotal) {
     message: `Booking fee of ${formatCurrency(booking.cost.bookingFee)} added. Amount to pay on visit: ${formatCurrency(booking.cost.amountToPayOnArrival)}`,
     actor: 'Admin'
   });
-  
+
   // Close modal
   modalSystem.close();
-  
+
   // Refresh the pending bookings view
   loadPendingBookings();
-  
+
   // Show success message
   alert(`✅ Booking fee of ${formatCurrency(booking.cost.bookingFee)} added successfully!`);
 }
@@ -3096,26 +3096,26 @@ async function confirmBooking(bookingId) {
   // Update status to confirmed (move from pending to confirmed)
   booking.status = 'confirmed';
   booking.confirmedAt = Date.now();
-  
+
   // Ensure cost object exists and has correct structure
   if (!booking.cost) {
     booking.cost = {};
   }
-  
+
   // Calculate and store price breakdown
   const packagePrice = booking.cost.packagePrice || booking.totalPrice || 0;
   const addOnsTotal = (booking.addOns || []).reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
   booking.cost.subtotal = packagePrice + addOnsTotal;
   booking.cost.totalAmount = booking.cost.subtotal;
-  
+
   // Booking fee doesn't change total
   if (!booking.cost.bookingFee) {
     booking.cost.bookingFee = 0;
   }
-  
+
   // Calculate amount to pay on visit
   booking.cost.amountToPayOnArrival = Math.max(0, booking.cost.subtotal - booking.cost.bookingFee);
-  
+
   saveBookings(bookings);
   logBookingHistory({
     bookingId,
@@ -5344,7 +5344,7 @@ window.handleAddAddonToBooking = async function (bookingId) {
     alert('Invalid add-on price');
     return;
   }
-  
+
   booking.addOns.push({
     id: packageId,
     name: addonPkg.name + (tierLabel !== 'Base' ? ` - ${tierLabel}` : ''),
@@ -5356,13 +5356,13 @@ window.handleAddAddonToBooking = async function (bookingId) {
   const servicesTotal = (booking.cost?.services || []).reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
   const addOnsTotal = booking.addOns.reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
   const newSubtotal = packagePrice + servicesTotal + addOnsTotal;
-  
+
   // Validate the result is a number
   if (isNaN(newSubtotal)) {
     alert('Error calculating total price');
     return;
   }
-  
+
   // Update cost object
   if (!booking.cost) booking.cost = {};
   booking.cost.subtotal = newSubtotal;
@@ -5409,13 +5409,13 @@ window.handleRemoveAddonFromBooking = async function (bookingId, addonIndex) {
   const servicesTotal = (booking.cost?.services || []).reduce((sum, service) => sum + (parseFloat(service.price) || 0), 0);
   const addOnsTotal = booking.addOns.reduce((sum, addon) => sum + (parseFloat(addon.price) || 0), 0);
   const newSubtotal = packagePrice + servicesTotal + addOnsTotal;
-  
+
   // Validate the result is a number
   if (isNaN(newSubtotal)) {
     alert('Error calculating total price');
     return;
   }
-  
+
   // Update cost object
   if (!booking.cost) booking.cost = {};
   booking.cost.subtotal = newSubtotal;
@@ -5558,7 +5558,7 @@ window.openAddonsModal = async function (bookingId) {
 
                     <div style="text-align:right;margin-top:1rem;border-top:2px solid #e5e7eb;padding-top:1rem;">
                         <span style="font-size:1.15rem;font-weight:700;color:#111827;">
-                            Total: <span style="color:#059669;">₱${remainingBalance.toLocaleString()}</span>
+                            Total: <span style="color:#059669;">${formatCurrency(remainingBalance)}</span>
                         </span>
                     </div>
                 </div>
@@ -5718,7 +5718,7 @@ window.renderBookingHistoryTable = function (bookings) {
       booking.status === 'cancelled' ? 'badge-cancelled' : 'badge-noshow';
     const statusText = booking.status.charAt(0).toUpperCase() + booking.status.slice(1).replace('-', ' ');
     const totalPrice = booking.totalPrice || booking.cost?.subtotal || 0;
-    const priceButton = totalPrice > 0 
+    const priceButton = totalPrice > 0
       ? `<button class="btn btn-sm" style="background: #2e7d32; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.25rem; cursor: pointer; font-weight: 600;" onclick="openPricingBreakdownModal('${booking.id}')">${formatCurrency(totalPrice)}</button>`
       : '—';
 
@@ -5929,12 +5929,12 @@ window.toggleSidebarSection = function (sectionId) {
 window.toggleActionDropdown = function (button) {
   const dropdown = button.closest('.action-dropdown');
   const menu = dropdown.querySelector('.action-dropdown-menu');
-  
+
   // Close all other dropdowns
   document.querySelectorAll('.action-dropdown-menu.show').forEach(m => {
     if (m !== menu) m.classList.remove('show');
   });
-  
+
   // Toggle current dropdown
   menu.classList.toggle('show');
 };
@@ -5974,13 +5974,13 @@ async function openPricingBreakdownModal(bookingId) {
 
   const cost = booking.cost || {};
   const bookingFee = cost.bookingFee || 100;
-  
+
   // Get the base package price (without add-ons)
   const packagePrice = cost.packagePrice || 0;
-  
+
   // Get add-ons - prioritize booking.addOns since that's where we store them
   let addOnsArray = [];
-  
+
   if (booking.addOns && Array.isArray(booking.addOns) && booking.addOns.length > 0) {
     // Use booking.addOns (this is where add-ons are stored when added via Manage Add-ons)
     addOnsArray = booking.addOns.map(addon => {
@@ -6001,10 +6001,10 @@ async function openPricingBreakdownModal(bookingId) {
     // Fallback to cost.addOns if booking.addOns is empty
     addOnsArray = cost.addOns;
   }
-  
+
   const addOnsTotal = addOnsArray.reduce((sum, addon) => sum + (addon.price || 0), 0);
   const servicesTotal = cost.services?.reduce((sum, service) => sum + (service.price || 0), 0) || 0;
-  
+
   // Calculate correct total: Total Amount = Subtotal - Booking Fee (MINUS, not plus!)
   const subtotal = packagePrice + servicesTotal + addOnsTotal;
   const totalAmount = Math.max(0, subtotal - bookingFee);
@@ -6192,8 +6192,8 @@ async function openRevenueDetailsModal() {
             </thead>
             <tbody>
               ${bookingDetails.map(b => {
-                const subtotal = b.packagePrice + b.addOnsTotal + b.servicesTotal;
-                return `
+    const subtotal = b.packagePrice + b.addOnsTotal + b.servicesTotal;
+    return `
                 <tr style="border-bottom: 1px solid var(--gray-200);">
                   <td style="padding: 0.75rem; font-weight: 600; color: #2e7d32;">${escapeHtml(b.id)}</td>
                   <td style="padding: 0.75rem;">${escapeHtml(b.customer)}</td>
@@ -6206,7 +6206,7 @@ async function openRevenueDetailsModal() {
                   <td style="padding: 0.75rem; text-align: right; font-weight: 700; color: #2e7d32;">${formatCurrency(b.totalPrice)}</td>
                 </tr>
               `;
-              }).join('')}
+  }).join('')}
             </tbody>
           </table>
         </div>
