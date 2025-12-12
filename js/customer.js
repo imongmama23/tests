@@ -631,41 +631,15 @@ async function openBookingDetailModal(bookingId) {
   const statusClass = getCustomerStatusClass(booking.status);
   const statusLabel = formatBookingStatus(booking.status);
 
-  // Cost Calculation / Display Logic
-  let cost = booking.cost;
-
-  // Use stored totalPrice if available (for real-time updates)
-  const totalAmount = booking.totalPrice !== undefined ? booking.totalPrice : (cost ? (cost.totalAmount || cost.subtotal) : 0);
-
-  // Add-ons Display
-  let addOnDisplay = 'None';
-  if (booking.addOns && booking.addOns.length > 0) {
-    // Check if it's an array of strings or objects
-    if (typeof booking.addOns[0] === 'string') {
-      addOnDisplay = escapeHtml(booking.addOns.join(', '));
-    } else {
-      // Array of objects { name, price, ... }
-      addOnDisplay = booking.addOns.map(a =>
-        `${escapeHtml(a.name)} (${formatCurrency(a.price)})`
-      ).join(', ');
-    }
-  } else if (cost && cost.addOns && cost.addOns.length > 0) {
-    addOnDisplay = cost.addOns.map(addon => `${escapeHtml(addon.label)} (${formatCurrency(addon.price)})`).join(', ');
-  }
-
   const weightLabel = booking.petWeight || profile.weight || '';
   const bookingCode = typeof getBookingDisplayCode === 'function'
     ? getBookingDisplayCode(booking)
     : (booking.shortId || booking.id);
 
-  // Prepare Subtotal / Total display
-  // If we have dynamic pricing (In-Progress), showing just 'Total Amount' is clearer than confused Subtotal/Fee logic
-  // unless we want to maintain the 'Booking Fee' deducted visual.
-  // For In-Progress/Completed with ad-hoc addons, the 'cost' object might be stale if we didn't update it fully.
-  // Let's prioritize showing the Total Amount prominently.
-
-  const bookingFee = cost ? (cost.bookingFee || cost.totalDueToday || 100) : 100;
-  const balanceToPay = totalAmount - bookingFee;
+  // Use unified price breakdown from main.js
+  const priceBreakdownHtml = typeof generateUnifiedPriceBreakdown === 'function'
+    ? generateUnifiedPriceBreakdown(booking)
+    : '';
 
   showModal(`
     <h3>Booking Details</h3>
@@ -713,10 +687,6 @@ async function openBookingDetailModal(bookingId) {
       <span class="summary-label">Status:</span>
       <span class="summary-value"><span class="badge ${statusClass}">${escapeHtml(statusLabel)}</span></span>
     </div>
-    <div class="summary-item">
-      <span class="summary-label">Add-ons:</span>
-      <span class="summary-value">${addOnDisplay}</span>
-    </div>
     ${booking.bookingNotes && booking.bookingNotes.trim() ? `
       <div class="summary-item">
         <span class="summary-label">Preferred Cut/Notes:</span>
@@ -730,25 +700,7 @@ async function openBookingDetailModal(bookingId) {
       </div>
     ` : ''}
     
-    <div class="summary-item" style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--gray-200); font-weight: 600;">
-      <span class="summary-label">Total Amount:</span>
-      <span class="summary-value">${formatCurrency(totalAmount)}</span>
-    </div>
-    ${booking.status === 'pending' ? `
-      <div class="summary-item" style="font-size: 0.85rem; color: var(--gray-600);">
-        <span class="summary-label">Booking Fee (Pending):</span>
-        <span class="summary-value">-₱${bookingFee}</span>
-      </div>
-      <div class="summary-item" style="margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 600; color: var(--success-600);">
-        <span class="summary-label">Balance to Pay:</span>
-        <span class="summary-value">${formatCurrency(balanceToPay)}</span>
-      </div>
-    ` : `
-      <div class="summary-item" style="margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 600; color: var(--success-600);">
-        <span class="summary-label">Amount to Pay:</span>
-        <span class="summary-value">${formatCurrency(totalAmount)}</span>
-      </div>
-    `}
+    ${priceBreakdownHtml}
     
     <div class="modal-actions">
       ${booking.status === 'pending' ? `
@@ -1547,10 +1499,9 @@ async function openCustomerPricingBreakdownModal(bookingId) {
   const addOnsTotal = addOnsArray.reduce((sum, addon) => sum + (addon.price || 0), 0);
   const servicesTotal = cost.services?.reduce((sum, service) => sum + (service.price || 0), 0) || 0;
   
-  // Calculate correct total: package + services + add-ons + booking fee
+  // Calculate correct total: Total Amount = Subtotal - Booking Fee (MINUS, not plus!)
   const subtotal = packagePrice + servicesTotal + addOnsTotal;
-  const totalAmount = subtotal + bookingFee;
-  const balanceOnVisit = subtotal; // Balance is just the service cost
+  const totalAmount = Math.max(0, subtotal - bookingFee);
 
   const modalContent = `
     <div style="max-width: 500px;">
@@ -1605,9 +1556,9 @@ async function openCustomerPricingBreakdownModal(bookingId) {
           <span style="font-weight: 700; color: var(--gray-900); font-size: 1.1rem;">${formatCurrency(subtotal)}</span>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1rem; background: #e8f5e9; padding: 0.75rem; border-radius: 0.25rem;">
-          <span style="color: #2e7d32; font-weight: 500;">🎫 Booking Fee:</span>
-          <span style="font-weight: 600; color: #2e7d32;">+${formatCurrency(bookingFee)}</span>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; margin-bottom: 1rem; background: #fff3cd; padding: 0.75rem; border-radius: 0.25rem;">
+          <span style="color: var(--danger, #dc3545); font-weight: 500;">🎫 Booking Fee (Paid):</span>
+          <span style="font-weight: 600; color: var(--danger, #dc3545);">- ${formatCurrency(bookingFee)}</span>
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; background: #e8f5e9; padding: 1rem; border-radius: 0.25rem; border-left: 4px solid #2e7d32;">
@@ -1747,4 +1698,5 @@ async function openCustomerSpendingDetailsModal() {
 
   showModal(modalContent);
 }
-window.openCustomerSpendingDetailsModal = openCustomerSpendingDetailsModal;
+window.openCus
+tomerSpendingDetailsModal = openCustomerSpendingDetailsModal;
